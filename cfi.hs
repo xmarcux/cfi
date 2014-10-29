@@ -7,7 +7,7 @@ License     : GPLv3
 Maintainer  : marcux@marcux.org
 Stability   : Exprimental
 Portability : Portable
-Version     : Alpha
+Version     : v0.1-alpha
 
 Compares two files and gives a report if
 files are equal or what lines that differes.
