@@ -5,9 +5,9 @@ Copyright   : (C) Marcus Pedersén, 2014
 
 License     : GPLv3
 Maintainer  : marcux@marcux.org
-Stability   : Exprimental
+Stability   : Stable
 Portability : Portable
-Version     : v0.1-alpha
+Version     : v1.0.0
 
 Functions for evaluation and comparing of two files.
 Handles the report on equality.
@@ -17,11 +17,17 @@ module EvalFiles where
 
 import System.Directory
 import System.Time
+import System.FilePath
 
 {-|
   Type that represent file contents.
 -}
 type FileContent = String
+
+{-|
+  Type that represent filename.
+-}
+type FileName = String
 
 {-|
   Prints error message to terminal if any of files does not exist.
@@ -60,7 +66,16 @@ readFiles file1 file2 toFile = do
 
     c <- getClockTime
     ct <- toCalendarTime c
-    putStrLn $ unlines (repStr f1 f2 ct) ++ parseFiles (lines f1) (lines f2) [] 0 0
+
+    if toFile then
+        do createDirectoryIfMissing True "report"
+           writeFile ("report" ++ (pathSeparator:[]) ++ fileNameStr ct file1 file2) 
+                     (unlines (repStr f1 f2 ct) ++ parseFiles (lines f1) (lines f2) [] 0 0)
+           dir <- getCurrentDirectory
+           putStrLn $ "Report written to: " ++ dir ++ (pathSeparator:[]) ++ "report" ++
+                      (pathSeparator:[]) ++ fileNameStr ct file1 file2
+    else
+        putStrLn $ unlines (repStr f1 f2 ct) ++ parseFiles (lines f1) (lines f2) [] 0 0
     where repStr f1 f2 ct  =  "Difference report":
                               "===================":
                               dateStr ct:"":
@@ -75,22 +90,62 @@ readFiles file1 file2 toFile = do
   Returns a formated date and time string in format: YYYY-MM-DD HH:MM:SS
 -}
 dateStr :: CalendarTime -> String
-dateStr ct = show (ctYear ct) ++ "-" ++ monthNo (ctMonth ct) ++ "-" ++ padStr (ctDay ct) ++
-             " " ++ padStr (ctHour ct) ++ ":" ++ padStr (ctMin ct) ++ ":" ++ padStr (ctSec ct)
-             where padStr  d     | d < 10             = "0" ++ show d
-                                 | otherwise          = show d
-	     	   monthNo month | month == January   = "01"
-                                 | month == February  = "02"
-                                 | month == March     = "03"
-                                 | month == April     = "04"
-                                 | month == May       = "05"
-                                 | month == June      = "06"
-                                 | month == July      = "07"
-                                 | month == August    = "08"
-                                 | month == September = "09"
-                                 | month == October   = "10"
-                                 | month == November  = "11"
-                                 | month == December  = "12"
+dateStr ct = show (ctYear ct) ++ "-" ++ monthNoStr (ctMonth ct) ++ "-" ++ padNoStr (ctDay ct) ++
+             " " ++ padNoStr (ctHour ct) ++ ":" ++ padNoStr (ctMin ct) ++ ":" ++ padNoStr (ctSec ct)
+
+
+{-|
+  Returns name for report file formated as: 
+  YYYYMMDD_HHMMSS_filename1_ext_filename2_ext.txt
+  Characters: .(dot), /(slash) and \(backslash)
+  is replaced with underscore.
+-}
+fileNameStr :: CalendarTime -> FileName -> FileName -> String
+fileNameStr ct file1 file2 = show (ctYear ct) ++ monthNoStr (ctMonth ct) ++ padNoStr (ctDay ct) ++
+                             "_" ++ padNoStr (ctHour ct) ++ padNoStr (ctMin ct) ++ 
+                             padNoStr (ctSec ct) ++ "_" ++ cleanStr file1 ++ "_" ++
+                             cleanStr file2 ++ ".txt"
+                             where cleanStr s = replaceDot . replaceSlash $ replaceBackSlash s
+                                   replaceDot (c:cs) | c == '.'  = '_':replaceDot cs
+                                                     | otherwise =   c:replaceDot cs
+                                   replaceDot [] = []
+                                   replaceSlash (c:cs) | c == '/' = '_':replaceSlash cs
+                                                       | otherwise =  c:replaceSlash cs
+                                   replaceSlash [] = []
+                                   replaceBackSlash (c:d:cs) | c:d:[] == "\\" = '_':replaceBackSlash cs
+                                                             | otherwise = c:replaceBackSlash (d:cs)
+                                   replaceBackSlash (c:[]) = c:[]
+
+{-|
+  Pads an integer with a 0 (zero)
+  if smaller than 10. 
+  Returns a string.
+-}
+padNoStr :: Int -> String
+padNoStr d | d < 10    = "0" ++ show d
+           | otherwise = show d
+
+
+{-|
+  Returns a paded string that represent
+  the month number. If month number
+  smaller than 10 then a 0 (zero) is 
+  paded before the month number.
+-}
+monthNoStr :: Month -> String
+monthNoStr month | month == January   = "01"
+                 | month == February  = "02"
+                 | month == March     = "03"
+                 | month == April     = "04"
+                 | month == May       = "05"
+                 | month == June      = "06"
+                 | month == July      = "07"
+                 | month == August    = "08"
+                 | month == September = "09"
+                 | month == October   = "10"
+                 | month == November  = "11"
+                 | month == December  = "12"
+
 
 {-|
   Function takes contents for two files (splited in lines) to be compared,
@@ -119,7 +174,7 @@ parseFiles _ [] report count diffCount = sumParse report count diffCount
 -}
 sumParse :: [String] -> Int -> Int -> String
 sumParse report count diffCount =
-    unlines $ ("Number of rows searched: " ++ show count):diffStr:"":"":
-               "Differences:":"============":"":report
-    where diffStr | diffCount == 0 = "FILES ARE EQUAL!!!"
-                  | otherwise      = "Number of rows that are different: " ++ (show diffCount)
+    unlines $ ("Number of rows searched: " ++ show count):diffStr
+    where diffStr | diffCount == 0 = "FILES ARE EQUAL!!!":[]
+                  | otherwise      = ("Number of rows that are different: " ++ (show diffCount)):
+                                      "":"":"Differences:":"============":"":report

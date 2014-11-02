@@ -5,9 +5,9 @@ Copyright   : (C) Marcus Pedersén, 2014
 
 License     : GPLv3
 Maintainer  : marcux@marcux.org
-Stability   : Exprimental
+Stability   : Stable
 Portability : Portable
-Version     : v0.1-alpha
+Version     : v1.0.0
 
 Compares two files and gives a report if
 files are equal or what lines that differes.
@@ -30,7 +30,7 @@ main = do args <- getArgs
 
 
 {-|
-  Prints a smalln copyright notice
+  Prints a small copyright notice
   on terminal.
 -}
 copyrightPrint :: IO ()
